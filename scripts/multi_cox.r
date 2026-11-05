@@ -7,7 +7,7 @@ library(caret)
 library(dplyr)
 library(ggplot2)
 
-df <- read.csv("shared_expression_with_clinical_1.csv", stringsAsFactors = FALSE)
+df <- read.csv("data.csv", stringsAsFactors = FALSE)
 # Rename for safety
 colnames(df)[colnames(df)=="time"] <- "OS_time"
 colnames(df)[colnames(df)=="status"] <- "OS_event"
@@ -89,9 +89,9 @@ p_rf_imp <- ggplot(rf_imp_df, aes(x=reorder(Gene, Importance), y=Importance)) +
   geom_bar(stat="identity", fill="steelblue") +
   coord_flip() +
   theme_bw() +
-  labs(title="Top 20 RF Variable Importance", x="Gene", y="Permutation Importance")
+  labs(title="Top 20 RF Variable", x="Gene", y="Permutation Importance")
 
-ggsave("RF_Variable_Importance_Top20.png", p_rf_imp, width=7, height=6, dpi=900)
+ggsave("RF_Variable_Top20.png", p_rf_imp, width=7, height=6, dpi=900)
 
 print(p_rf_imp)
 
