@@ -12,32 +12,27 @@ df <- read.csv("shared_expression_with_clinical_1.csv", stringsAsFactors = FALSE
 colnames(df)[colnames(df)=="time"] <- "OS_time"
 colnames(df)[colnames(df)=="status"] <- "OS_event"
 
-
-############################################################
 # Encode clinical variables
-############################################################
+
 df$gender <- factor(df$gender)
 df$stage <- factor(df$stage, ordered = TRUE)
 
 df$TMB <- log2(df$TMB + 1)
 df$total_mutation <- log2(df$total_mutation + 1)
 
-############################################################
-# Remove rows with missing values (critical)
-############################################################
+# Remove rows with missing values 
+
 df <- df[complete.cases(df), ]
 cat("Patients after NA removal:", nrow(df), "\n")
 
-############################################################
+
 # Separate genes vs survival outcome
-############################################################
+
 gene_cols <- colnames(df)[9:ncol(df)]
 X_all <- as.matrix(df[, gene_cols])
 
-# =============================================================================
-# Random Forest Stability Selection (30 iterations)
-# =============================================================================
 
+# Random Forest Stability Selection
 set.seed(123)
 n_iter <- 500
 rf_sel <- matrix(0, nrow=ncol(X_all), ncol=n_iter)
@@ -47,7 +42,7 @@ pb <- txtProgressBar(min=0, max=n_iter, style=3)
 for(i in 1:n_iter) {
   setTxtProgressBar(pb, i)
   
-  # Bootstrap sample (YOUR data)
+  # Bootstrap sample 
   boot_idx <- sample(nrow(X_all), replace=TRUE)
   X_boot <- X_all[boot_idx,]
   time_boot <- df$OS_time[boot_idx]
@@ -81,8 +76,6 @@ print(head(rf_genes, 20))
 
 
 # RF VARIABLE IMPORTANCE PLOT
-############################################################
-
 rf_full <- rfsrc(Surv(OS_time, OS_event) ~ ., 
                  data = data.frame(df[, gene_cols], 
                                    OS_time=df$OS_time, OS_event=df$OS_event),
@@ -102,9 +95,6 @@ ggsave("RF_Variable_Importance_Top20.png", p_rf_imp, width=7, height=6, dpi=900)
 
 print(p_rf_imp)
 
-
-
-
 rf_freq_df <- data.frame(Gene = rf_genes,
                          Frequency = rf_freq[rf_genes])
 
@@ -120,10 +110,7 @@ ggsave("RF_Stability_Frequency.png", p_rf_freq, width=7, height=6, dpi=900)
 
 print(p_rf_freq)
 
-# =============================================================================
-# UNIVARIATE COX FILTERING (p < 0.05) 
-# =============================================================================
-
+# UNIVARIATE COX FILTERING 
 y <- Surv(df$OS_time, df$OS_event)  
 
 X_rf <- X_all[, rf_genes, drop = FALSE]
@@ -147,11 +134,9 @@ print(rf_final_genes)
 
 cat("✅ FINAL RF genes (Cox p<0.05):", length(rf_final_genes), "\n")
 
-############################################################
-# UNIVARIATE COX FOREST PLOT
-############################################################
 
-'''uni_plot_df <- uni_df %>%
+# UNIVARIATE COX FOREST PLOT
+uni_plot_df <- uni_df %>%
   filter(Gene %in% rf_final_genes) %>%
   mutate(logHR = log(HR),
          lower = exp(logHR - 1.96*sd(logHR)),
@@ -168,13 +153,11 @@ p_uni_forest <- ggplot(uni_plot_df,
        x="Hazard Ratio (log scale)", y="Gene")
 
 ggsave("Univariate_Cox_Forest.png", p_uni_forest, width=7, height=6, dpi=300)
-print(p_uni_forest)'''
+print(p_uni_forest)
 
-# =============================================================================
+
 # MULTIVARIATE COX MODEL (RF genes + clinical)
-# =============================================================================
-
-cat("\n🏗️ Building final Cox model...\n")
+cat("\n Building final Cox model...\n")
 df_rf_model <- df[, c("OS_time","OS_event","age","gender","stage","TMB","total_mutation", rf_final_genes)]
 fit_rf_final <- coxph(Surv(OS_time, OS_event) ~ ., data = df_rf_model)
 summary(fit_rf_final)
@@ -182,8 +165,6 @@ summary(fit_rf_final)
 
 
 # MULTIVARIATE COX FOREST PLOT (GENES ONLY)
-############################################################
-
 multi_coef <- summary(fit_rf_final)$coefficients
 multi_df <- as.data.frame(multi_coef)
 multi_df$Variable <- rownames(multi_df)
@@ -205,10 +186,8 @@ ggsave("Multivariate_Cox_Forest_Genes.png", p_multi_forest,
  width=7, height=6, dpi=900)
 print(p_multi_forest)
 
-# =============================================================================
-# RISK SCORE + RISK GROUPS
-# =============================================================================
 
+# RISK SCORE + RISK GROUPS
 df$rf_risk_score <- predict(fit_rf_final, type = "lp")
 cutoff_rf <- median(df$rf_risk_score)
 df$rf_risk_group <- ifelse(df$rf_risk_score >= cutoff_rf, "High", "Low")
@@ -219,7 +198,6 @@ table(df$rf_risk_group)
 
 
 # HEATMAP OF GENE EXPRESSION VS RISK GROUPS
-############################################################
 library(ComplexHeatmap)
 library(circlize)
 
@@ -264,10 +242,8 @@ Heatmap(heat_data_scaled,
 dev.off()
 
 
-# =============================================================================
+
 # KAPLAN-MEIER SURVIVAL CURVE
-# =============================================================================
-# Check what columns you have
 print("Available columns in df:")
 print(colnames(df))
 print("Risk-related columns:")
@@ -279,13 +255,12 @@ p <- ggsurvplot(fit_km_rf, data = df, pval = TRUE, risk.table = TRUE,
 
 # SAVE HIGH DPI
 ggsave("RF_Survival_300dpi.png", 
-       plot = print(p),           # ← CRITICAL: print()
+       plot = print(p),           
        width = 12, height = 8, 
        bg = "white",
        dpi = 900)
 
 
-# Your columns are READY - just plot!
 fit_km_rf <- survfit(Surv(OS_time, OS_event) ~ rf_risk_group, data = df)
 
 p <- ggsurvplot(fit_km_rf,
@@ -295,7 +270,7 @@ p <- ggsurvplot(fit_km_rf,
                 conf.int = FALSE,
                 title = "RF Risk Model: High vs Low Risk",
                 xlab = "Time (days)",
-                palette = c("lightblue", "orange"),# Green=Low, Red=High
+                palette = c("lightblue", "orange"),
                 bg="white",
                 legend.labs = c("Low Risk", "High Risk"))
 
@@ -313,12 +288,11 @@ if(logrank_p < 1e-10) {
 }
 
 cat("Log-rank p-value:", p_display, "\n")
-# Output: Log-rank p-value: < 1e-10
 
 
-# =============================================================================
-# 6. TIME-DEPENDENT ROC (1, 3, 5 years)
-# =============================================================================
+
+# TIME-DEPENDENT ROC (1, 3, 5 years)
+
 roc_rf <- timeROC(T = df$OS_time,
                   delta = df$OS_event,
                   marker = df$rf_risk_score,
@@ -335,7 +309,7 @@ plot(roc_rf, time=1095, add=TRUE, col="#FF69B4", lwd=4)
 plot(roc_rf, time=1825, add=TRUE, col="#32CD32", lwd=4)
 abline(a=0, b=1, lty=2, col="gray40", lwd=2)
 
-# PERFECT bottom-right legend INSIDE box
+
 legend("bottomright", 
        inset=c(0.02, 0.02),        
        legend=paste0(c("1-year","3-year","5-year"), 
@@ -352,9 +326,9 @@ dev.off()
 
 print(roc_rf)
 
-# =============================================================================
+
 # INDEPENDENCE TEST (RF risk + clinical)
-# =============================================================================
+
 
 fit_indep_rf <- coxph(Surv(OS_time, OS_event) ~ rf_risk_score + age + gender + 
                         stage + TMB + total_mutation, data = df)
@@ -366,9 +340,7 @@ cat("\nC-index (RF model):", round(c_rf, 3), "\n")
 
 
 
-# =============================================================================
-# 1LOW vs HIGH PATIENT LISTS 
-# =============================================================================
+# LOW vs HIGH PATIENT LISTS 
 
 cat("🎯 LOW vs HIGH RISK PATIENTS:\n")
 cat("Low risk patients:", sum(df$rf_risk_group == "Low"), "\n")
@@ -394,9 +366,9 @@ cat("\n💾 SAVED:\n")
 cat("RF_Low_Risk_Patients.csv\n")
 cat("RF_High_Risk_Patients.csv\n")
 
-# =============================================================================
+
 # INDIVIDUAL GENE KM PLOTS (ALL RF GENES)
-# =============================================================================
+
 
 library(ggpubr)
 library(gridExtra)
@@ -438,9 +410,9 @@ if(length(gene_plots) >= 9) {
   print(combined_plot)
 }
 
-# =============================================================================
+
 # GENE EXPRESSION SUMMARY (High vs Low Risk)
-# =============================================================================
+
 
 cat("\n📊 GENE EXPRESSION BY RISK GROUP:\n")
 gene_summary <- data.frame(
@@ -457,10 +429,8 @@ gene_summary <- data.frame(
 print(round(gene_summary, 3))
 write.csv(gene_summary, "RF_Gene_Expression_High_vs_Low.csv", row.names=FALSE)
 
-# =============================================================================
-# TOP PATIENTS BY RISK SCORE (Extreme cases)
-# =============================================================================
 
+# TOP PATIENTS BY RISK SCORE 
 cat("\n🔥 TOP 5 LOWEST RISK PATIENTS:\n")
 top_low <- df[df$rf_risk_group=="Low",][order(df[df$rf_risk_group=="Low",]$rf_risk_score)[1:5], 
                                         c("CaseID", "rf_risk_score", rf_final_genes[1:3])]
@@ -471,10 +441,8 @@ top_high <- df[df$rf_risk_group=="High",][order(df[df$rf_risk_group=="High",]$rf
                                           c("CaseID", "rf_risk_score", rf_final_genes[1:3])]
 print(top_high)
 
-# =============================================================================
-# SAVE ALL INDIVIDUAL GENE KM PLOTS
-# =============================================================================
 
+# SAVE ALL INDIVIDUAL GENE KM PLOTS
 cat("\n💾 Saving individual gene KM plots...\n")
 for(i in 1:length(rf_final_genes)) {
   gene <- rf_final_genes[i]
@@ -491,10 +459,8 @@ cat("4. KM_[GENE].png (individual plots)\n")
 cat("5. Log-rank p < 1e-10 (EXCELLENT!)\n")
 
 
-# =============================================================================
-# EXTRACT FINAL GENE COEFFICIENTS
-# =============================================================================
 
+# EXTRACT FINAL GENE COEFFICIENTS
 coef_rf <- summary(fit_rf_final)$coefficients
 coef_df_rf <- as.data.frame(coef_rf)
 coef_df_rf$Variable <- rownames(coef_df_rf)
@@ -502,9 +468,8 @@ rf_gene_results <- coef_df_rf[coef_df_rf$Variable %in% rf_final_genes, ]
 rf_gene_results <- rf_gene_results[, c("Variable","coef","`exp(coef.)`","Pr(>|z|)")]
 colnames(rf_gene_results) <- c("Gene","Coefficient","HazardRatio","Pvalue")
 
-# =============================================================================
+
 # SAVE ALL RESULTS
-# =============================================================================
 
 write.csv(rf_final_genes, "RF_final_genes.csv", row.names=FALSE)
 write.csv(rf_gene_results, "RF_gene_coefficients.csv", row.names=FALSE)
