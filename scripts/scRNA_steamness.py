@@ -11,9 +11,9 @@ sc.settings.verbosity = 3
 sc.settings.set_figure_params(dpi=600, facecolor="white")
 
 # =====================================================
-# 1. LOAD DATA
+# LOAD DATA
 # =====================================================
-adata = sc.read("adata_backup_raw.h5ad")
+adata = sc.read("your_data.h5ad")
 
 meta = pd.read_csv("meta.tsv", sep="\t", index_col=0)
 common = adata.obs_names.intersection(meta.index)
@@ -21,7 +21,7 @@ adata = adata[common].copy()
 adata.obs = meta.loc[common].copy()
 
 # =====================================================
-# 2. QC FILTERING
+# QC FILTERING
 # =====================================================
 adata.var["mt"] = adata.var_names.str.upper().str.startswith("MT-")
 adata.var["ribo"] = adata.var_names.str.upper().str.startswith(("RPS", "RPL"))
@@ -33,13 +33,13 @@ sc.pp.filter_cells(adata, min_genes=250)
 sc.pp.filter_genes(adata, min_cells=3)
 
 # =====================================================
-# 3. NORMALIZATION
+# NORMALIZATION
 # =====================================================
 sc.pp.normalize_total(adata, target_sum=1e4)
 sc.pp.log1p(adata)
 
 # =====================================================
-# 4. UMAP BEFORE STEMNESS
+# UMAP BEFORE STEMNESS
 # =====================================================
 sc.tl.pca(adata, n_comps=30)
 sc.pp.neighbors(adata, n_neighbors=15, n_pcs=30)
@@ -48,7 +48,7 @@ sc.tl.umap(adata)
 sc.pl.umap(adata, color="Cell_subtype", frameon=False, save="_before_cytotrace2.png")
 
 # =====================================================
-# 5. SUBSET: CANCER + NORMAL EPITHELIAL
+# SUBSET: CANCER + NORMAL EPITHELIAL
 # =====================================================
 cancer_epi = adata.obs["Cell_subtype_original"].isin(["CMS1", "CMS2", "CMS3", "CMS4"])
 normal_epi = (adata.obs["Cell_type"] == "Epithelial cells") & (adata.obs["Class"] == "Normal")
@@ -62,7 +62,7 @@ adata_epi.obs["Condition"] = adata_epi.obs["Condition"].astype("category")
 print(adata_epi.obs["Condition"].value_counts())
 
 # =====================================================
-# 6. WRITE REQUIRED FILES FOR CytoTRACE2
+# WRITE REQUIRED FILES FOR CytoTRACE2
 # =====================================================
 print("\nWriting CytoTRACE2 input files...")
 
@@ -82,7 +82,7 @@ anno_file = "cytotrace2_annotation.tsv"
 anno.to_csv(anno_file, sep="\t")
 
 # =====================================================
-# 7. RUN REAL CytoTRACE2
+# RUN CytoTRACE2
 # =====================================================
 print("\nRunning CytoTRACE2...")
 
@@ -93,7 +93,7 @@ cytotrace2(
 )
 
 # =====================================================
-# FIXED: Load CytoTRACE2 - inspect & correct columns
+#Load CytoTRACE2 - inspect & correct columns
 # =====================================================
 print("\nLoading & inspecting CytoTRACE2 results...")
 
@@ -167,11 +167,8 @@ if adata_de.shape[0] > 100:
 print("\nFixed & done!")
 ")
 
-
-
-
 # =====================================================
-# PREMIUM ATTRACTIVE VOLCANO PLOT
+#  VOLCANO PLOT
 # =====================================================
 import matplotlib.pyplot as plt
 import numpy as np
@@ -261,21 +258,15 @@ plt.show()
 print("🔥 Premium volcano plot saved as Volcano_CancerStem_vs_Normal_PREMIUM.png")
 
 
-
-
-
-
-
-
 # =====================================================
-# 9. VISUALIZATION PANELS (PREMIUM + ERROR-FREE)
+# 9. VISUALIZATION PANELS
 # =====================================================
 print("\nCreating premium visualizations...")
 
 sc.settings.set_figure_params(dpi=600, facecolor="white", fontsize=12)
 
 # -----------------------------------------------------
-# 1. Epithelial vs Other
+# Epithelial vs Other
 # -----------------------------------------------------
 adata.obs["Epithelial_status"] = "Other"
 adata.obs.loc[adata.obs["Cell_type"] == "Epithelial cells", "Epithelial_status"] = "Epithelial"
@@ -294,7 +285,7 @@ sc.pl.umap(
 )
 
 # -----------------------------------------------------
-# 2. CMS-like groups from Cell_subtype (if available)
+# CMS-like groups from Cell_subtype (if available)
 # -----------------------------------------------------
 adata.obs["CMS_group"] = adata.obs["Cell_subtype"].astype(str)
 adata.obs.loc[~adata.obs["CMS_group"].isin(["CMS1", "CMS2", "CMS3", "CMS4"]), "CMS_group"] = "Other"
@@ -321,7 +312,7 @@ sc.pl.umap(
 )
 
 # -----------------------------------------------------
-# 3. Tumor vs Normal vs Other
+# Tumor vs Normal vs Other
 # -----------------------------------------------------
 adata.obs["Tumor_status"] = "Other"
 adata.obs.loc[adata.obs["Class"] == "Tumor", "Tumor_status"] = "Tumor"
@@ -340,7 +331,7 @@ sc.pl.umap(
 )
 
 # -----------------------------------------------------
-# 4. All Cell Subtypes
+# All Cell Subtypes
 # -----------------------------------------------------
 sc.pl.umap(
     adata,
@@ -357,10 +348,8 @@ sc.pl.umap(
 )
 
 
-
-
 # =====================================================
-# 10. PATIENT COMPOSITION ANALYSIS (PREMIUM)
+# PATIENT COMPOSITION ANALYSIS 
 # =====================================================
 print("\nCalculating patient distribution across cell subtypes...")
 
