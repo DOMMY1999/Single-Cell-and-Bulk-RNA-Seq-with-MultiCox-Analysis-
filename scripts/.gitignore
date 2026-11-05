@@ -1,0 +1,32 @@
+# --- Large Data & Input Files ---
+*.h5ad
+*.tsv
+*.csv
+*.RData
+*.Rds
+*.rda
+
+# --- Output Figures & Plots ---
+*.png
+*.pdf
+*.jpg
+*.jpeg
+
+# --- Python Cache & Environment Files ---
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# --- R Environment Files ---
+.Rhistory
+.RData
+.Rproj.user/
+
+# --- Operating System & IDE Files ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
