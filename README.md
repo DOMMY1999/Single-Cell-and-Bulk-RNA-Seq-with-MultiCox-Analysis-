@@ -1,9 +1,6 @@
-Single-Cell and Bulk RNA-Seq MultiCox Analysis to Identify Cancer Stem Cell Specific
+Single-Cell and Bulk RNA-Seq MultiCox Analysis to Identify Cancer Stem Cell Specific Prognostic Genes associated with metastasis in CRC
 
-Prognostic Genes associated with metastasis in CRC
-
-Abstract
-Metastatic progression and high recurrence rates remain major challenge of the colorectal cancer
+Abstract: Metastatic progression and high recurrence rates remain major challenge of the colorectal cancer
 (CRC), which is mainly driven my complex Tumor Microenvironment (TME) and high
 heterogenic nature. Cancer stem cells (CSCs) are the subpopulation of TME characterized with
 self-renewal, and pluripotent nature, they drive the tumor towards metastasis through cellular
